@@ -6,74 +6,54 @@ that command still produce the claimed exit?*
 
 Two severities:
 
-- **fail** — a claim is not proven. Fails the gate (exit 1).
-- **warn** — hedge wording; may be deliberate. Passes by default, fails with `--strict`.
+- **fail** - a claim is not proven. Fails the gate (exit 1).
+- **warn** - a claim is weakened or unverifiable by replay. Fails only
+  with `--strict`.
 
-## fail
+## Fail rules
 
-| Rule | Catches | Example that fails |
+| Rule | Fires when | Example |
 | --- | --- | --- |
-| `unproven-claim` | result sentence with no evidence block under it | `All tests pass.` standing alone in a paragraph |
-| `bad-evidence` | block missing `$ cmd` or `[exit N]`, or counts differ | one command, two exit markers |
-| `evidence-mismatch` (`--run`) | replay exits differently than claimed | `[exit 0]` over a command that now exits 3 |
+| `unproven-claim` | a claim line has no evidence block below it | "All tests pass" floating alone |
+| `orphan-evidence` | an evidence block has no claim line above it | a `$ command` block under a heading gap |
+| `evidence-mismatch` | replayed exit differs from claimed `[exit N]` | claimed `[exit 0]`, command exited 3 (`--run` only) |
+| `bad-evidence` | a `$ command` with no `[exit N]`, an `[exit N]` with no command, or unequal counts | `[exit 0] ok` with no command |
 
-## warn
+## Warn rules
 
-| Rule | Catches | Example |
+| Rule | Fires when | Why it is not fatal |
 | --- | --- | --- |
-| `weasel` | hedge instead of a result | `This should be fixed now.` |
+| `weasel` | hedge wording on a claim line | the claim may be true - it is just not stated |
+| `unverified-exit` | `[exit N]` where N is outside 0-255 | a human wrote something odd |
 
-## The report format
+## Pairing
 
-An evidence block is a fenced block containing `$ command` and/or
-`[exit N]` lines. A claim is **proven** when the nearest non-empty line
-above the block's opening fence is that claim line:
+A **claim line** is any non-empty line outside a fenced block that (a)
+contains a claim marker (`tests pass`, `fixed`, `resolved`, `clean`,
+`done`, `green`, `passing`, `ready`, `should`, `probably`, `looks`,
+`hopefully`, `fast`, `improvement`, `regression`) or (b) reads like a result
+("Bug fixed"). An **evidence block** is a fenced block with `$ cmd` lines
+paired with `[exit N]` lines. For each block the scanner walks back from
+the opening fence over blanks to find the claim - the fence interior cannot
+serve as its own claim.
 
-````markdown
-- `python -m pytest -q` exits 0
-  ```
-  $ python -m pytest -q
-  [exit 0] 8 passed in 1.3s
-  ````
+## Replay
 
-Ordinary code snippets (no `$` / `[exit N]` lines) are not evidence and
-never pair with anything.
+`--run` re-executes every `$ command` (shell, unchanged cwd, 120s timeout
+each) and compares the real exit code to the claimed one. Timeouts count as
+a mismatch. Fabricated outputs pass static mode and fail here - replay is
+the authority.
 
-## What counts as a claim
+## Escape hatch
 
-Any line outside a code fence matching: test results (`all tests pass`),
-fix assertions (`fixed`, `works now`), absence claims (`no errors`,
-`no regressions`), cleanliness (`everything is clean`, `clean`, `green`),
-ship claims (`ready to deploy/ship/merge`), hedges (`should be fixed`,
-`should work`, `probably fine`), improvements (`20% faster`), and absolutes
-(`bug-free`, `secure`).
-
-A claim line paired with a block counts in `claims_proven`. The same line
-still gets a `weasel` warning when it hedges.
-
-## Replay is the authority
-
-Static mode validates structure only: pairs, counts, formats. It cannot
-tell a real transcript from a creative one. `--run` is what makes the gate
-a gate — it re-executes every cited command (per-command timeout, default
-120s) and fails on any exit-code disagreement. Run `--run` in CI, where the
-environment matches the claim.
-
-## The escape hatch
-
-A claim you intentionally cannot prove yet justifies itself on the line:
-
-```markdown
-- benchmark pending  # prove-it: allow -- machine reimage in progress, BENCH-7
-```
-
-The comment is stripped before matching (the rule still saw the claim) and
-the finding is counted as `exempt`, never silently dropped.
+`# prove-it: allow -- <reason>` on a claim line suppresses that line's
+findings and counts it as exempt. Imported from all lines of the report;
+audit-visible in every summary.
 
 ## Exit codes
 
 | Code | Meaning |
 | --- | --- |
-| `0` | every claim proven (or only warnings, without `--strict`) |
-| `1` | unproven claim, malformed evidence, or replay mismatch — do not report done |
-| `2` | usage error — unreadable report, no report and no piped stdin |
+| `0` | clean, or only warnings without `--strict` |
+| `1` | at least one fail (or any warning with `--strict`) |
+| `2` | usage error - no report, unreadable file, bad flags |

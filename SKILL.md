@@ -1,6 +1,6 @@
 ---
 name: prove-it
-description: Verifies completion claims with executed evidence. Use whenever an agent or a human is about to write "done", "fixed", "all tests pass", "ready to ship", or file any completion/PR/session report. Requires every claim to carry a $ command + [exit N] block, then re-executes the commands with scripts/prove.py --run so a claim that disagrees with reality fails the gate.
+description: Verifies completion claims with executed evidence. Use whenever an agent or a human is about to write "done", "fixed", "all tests pass", "ready to ship", or file any completion/PR/session report. Requires every claim to carry a $ command + [exit N] block, then re-executes the cited commands with --run so a claim that no longer holds exits 1.
 license: MIT
 compatibility: Requires Python 3.8+. Runs in Claude Code, Codex, Cursor, and any Agent Skills compatible client.
 metadata:
@@ -10,82 +10,69 @@ metadata:
 
 # prove-it
 
-A claim is a hypothesis until a process exits. "All tests pass" is not a
-status — it is a prediction that the test command exits 0 right now.
+Agents report success faster than they verify it. A session report saying
+"all tests pass and the bug is fixed" with no executed command behind it is
+a guess wearing a status label. prove-it turns completion claims into
+checkable evidence.
 
 ## The one rule
 
-You may not state a result you have not executed in this session. Every
-claim ships with its command and real exit code, and the gate re-runs them:
+You may not write "done", "fixed", "passing", or "clean" unless the sentence
+sits directly above an evidence block:
 
-```bash
-python scripts/prove.py report.md --run
+```markdown
+All tests pass and the bug is fixed.
+
+## Evidence
+
+```console
+$ python -m unittest discover -s tests
+[exit 0] OK - 8 tests
+```
 ```
 
-Exit 0 means the claims survived a replay. Exit 1 means a claim floats,
-the evidence is malformed, or reality disagreed with the written exit code.
-Never report success over a non-zero exit.
-
-See [references/RULES.md](references/RULES.md) for the rules and the exact
-report format.
+The claim comes first, the command and its exit code sit under it. No exit
+code, no claim.
 
 ## Protocol
 
-### 1. Write the claims first
+1. **Collect the claim** - every result-bearing sentence (test outcomes, fix
+   confirmations, build/deploy status, performance numbers). Hedge words
+   (`should be`, `probably`, `looks clean`) are findings too.
+2. **Execute every cited command** with `python scripts/prove.py <report>
+   --run`. Replay compares the real exit code to the claimed `[exit N]`.
+3. **Report back** - claim, the command you ran and its exit, and the exact
+   block you observed.
 
-List every result you intend to assert: tests, lint, types, the reproduced
-bug, the benchmark. If you cannot name the command that proves a claim,
-you have not done the work — go do it.
+## Rules at a glance
 
-### 2. Execute, do not recall
+- Claim with no evidence block -> `unproven-claim` (fail).
+- Evidence with no claim -> `orphan-evidence` (fail).
+- Replayed exit differs from claimed exit -> `evidence-mismatch` (fail).
+- `$ command` with no `[exit N]` or vice versa -> `bad-evidence` (fail).
+- Hedge wording -> `weasel` (warn).
 
-Run each command now, in this session, and record the actual exit code.
-Memory of a previous run is not evidence: HEAD may have moved, the
-environment may differ, the fixture may have rotted.
+Full catalogue: [references/RULES.md](references/RULES.md).
 
-### 3. Format evidence exactly like this
+## Escape hatch
 
-```markdown
-- `python -m pytest -q` exits 0
-  ```
-  $ python -m pytest -q
-  [exit 0] 8 passed in 1.3s
-  ```
-```
-
-One claim line, then its fenced block: `$ command` lines and `[exit N]`
-lines in matching counts. The claim line sits directly above the block —
-that pairing is what the checker validates.
-
-### 4. Gate it
-
-```bash
-python scripts/prove.py report.md --run
-```
-
-`--run` re-executes every cited command. A mismatch is a failure, not a
-disagreement to negotiate.
-
-### 5. Hard bans
-
-| Tempting move | Why it fails the gate | Do this instead |
-| --- | --- | --- |
-| "should be fixed now" | a hedge is not a result | state the exit code, or say it is unverified |
-| claim from memory ("tests passed earlier") | evidence older than HEAD | re-run it |
-| `[exit 0]` written by hand | `--run` replays and exposes it | paste the real run |
-| claim with no command | unfalsifiable | name the command or drop the claim |
-| fabricating output under the command | structure passes, replay fails | run it |
-
-An intentional exception is justified on the claim line itself:
+One justified exception per line, with a reason:
 
 ```markdown
-- benchmark number pending  # prove-it: allow -- rerun after hardware swap, BENCH-14
+All tests pass # prove-it: allow -- runs green locally, CI blocked on T-9
 ```
 
-### 6. Report back
+Counted in every summary so the exceptions stay visible.
 
-1. **Claims** — each one as: claim → command → exit code.
-2. **Evidence** — the fenced blocks, in the report.
-3. **Gate** — `prove.py report.md --run` and its exit 0.
+## Hard bans
 
-Never write "done" without those three lines.
+Never write any of these without an evidence block directly below:
+
+- "all tests pass" / "tests are green"
+- "the bug is fixed" / "resolved"
+- "ready to deploy" / "ship it" / "LGTM"
+- "should work" (unverified)
+
+And never cite an exit code you did not observe: a fabricated `[exit 0]`
+passes static mode and fails `--run` immediately. Static mode checks
+structure only. Replay is the authority.

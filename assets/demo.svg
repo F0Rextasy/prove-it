@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1217" height="242" viewBox="0 0 1217 242" font-family="'Cascadia Mono','Cascadia Code',Consolas,'DejaVu Sans Mono',monospace">
+<defs><clipPath id="c"><rect x="0" y="40" width="1217" height="202" rx="0"/></clipPath></defs>
+<rect width="1217" height="242" rx="10" fill="#0d1117"/>
+<path d="M0 10 A10 10 0 0 1 10 0 H1207 A10 10 0 0 1 1217 10 V40 H0 Z" fill="#161b22"/>
+<line x1="0" y1="40" x2="1217" y2="40" stroke="#30363d"/>
+<circle cx="20" cy="20" r="6.5" fill="#ff5f56"/>
+<circle cx="42" cy="20" r="6.5" fill="#ffbd2e"/>
+<circle cx="64" cy="20" r="6.5" fill="#27c93f"/>
+<text x="608" y="25" font-size="12.5" fill="#8b949e" text-anchor="middle">prove-it  --  examples/unproven.md</text>
+<text x="22" y="68" font-size="15" fill="#e6edf3" font-weight="600" xml:space="preserve">prove-it/examples/unproven.md</text>
+<text x="22" y="90" font-size="15" fill="#ff7b72" xml:space="preserve">  L3    FAIL  unproven-claim     All tests pass and the bug is fixed. -- claim with no `$ command` + `[exit N]` block under it</text>
+<text x="22" y="112" font-size="15" fill="#ff7b72" xml:space="preserve">  L5    FAIL  unproven-claim     Everything is clean after the lint run. -- claim with no `$ command` + `[exit N]` block under it</text>
+<text x="22" y="134" font-size="15" fill="#ff7b72" xml:space="preserve">  L7    FAIL  unproven-claim     This should be fixed now. -- claim with no `$ command` + `[exit N]` block under it</text>
+<text x="22" y="156" font-size="15" fill="#d29922" xml:space="preserve">  L7    WARN  weasel             This should be fixed now. -- hedge wording instead of a stated result</text>
+<text x="22" y="200" font-size="15" fill="#ff7b72" xml:space="preserve">prove-it: 3 failures, 1 warning across 1 report (0 exempt by &#x27;prove-it: allow&#x27;)</text>
+<text x="22" y="222" font-size="15" fill="#c9d1d9" xml:space="preserve">prove-it: attach executed evidence -- or justify one claim with:  # prove-it: allow -- &lt;reason&gt;</text>
+</svg>
